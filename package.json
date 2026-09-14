@@ -1,0 +1,38 @@
+{
+  "name": "nihongocore",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "packageManager": "npm@11.5.2",
+  "engines": {
+    "node": "\u003e=24.3.0 \u003c25",
+    "npm": "\u003e=11 \u003c12"
+  },
+  "scripts": {
+    "dev:api": "npm run start:dev --workspace @nihongocore/api",
+    "dev:web": "npm run web --workspace @nihongocore/client",
+    "dev:mobile": "npm run start --workspace @nihongocore/client",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint apps",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test --workspace @nihongocore/api",
+    "build": "npm run build --workspaces",
+    "db:generate": "npm run db:generate --workspace @nihongocore/api",
+    "db:validate": "npm run db:validate --workspace @nihongocore/api",
+    "db:migrate": "npm run db:migrate --workspace @nihongocore/api --",
+    "db:status": "npm run db:status --workspace @nihongocore/api",
+    "db:check": "npm run db:check --workspace @nihongocore/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70.0"
+  }
+}

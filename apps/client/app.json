@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "NihongoCore",
+    "slug": "nihongocore",
+    "version": "0.1.0",
+    "scheme": "nihongocore",
+    "platforms": ["ios", "android", "web"],
+    "plugins": ["expo-router"],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
+  }
+}
