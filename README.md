@@ -2,7 +2,7 @@
 
 NihongoCore là dự án ứng dụng học và ôn tập tiếng Nhật cá nhân, hướng tới Web, Android và iOS. Người học sẽ tổ chức kiến thức theo **Folder → Deck → Card**, luyện tập từ cùng một nguồn nội dung và theo dõi lịch sử học theo từng kỹ năng.
 
-**Trạng thái: đã hoàn thành nền tảng kỹ thuật M1; các chức năng học tập đang ở giai đoạn đặc tả.** Repository hiện chạy được màn hình development, backend REST API và PostgreSQL. Chưa có đăng ký, đăng nhập hoặc bộ thẻ để sử dụng như một sản phẩm hoàn chỉnh.
+**Trạng thái: nền tảng M1 và feature `001-authentication` đã được triển khai, kiểm thử.** Repository hiện có luồng Register, Login, khôi phục phiên, Logout và authenticated shell tối thiểu trên Expo Web/native foundation. Các chức năng học tập vẫn ở giai đoạn đặc tả.
 
 ## Định hướng sản phẩm
 
@@ -18,17 +18,17 @@ Các mục trên là phạm vi dự kiến, chưa phải chức năng đã tri�
 
 ## Hiện tại chạy được những gì?
 
-| Thành phần | Khả năng hiện có                                                                                           |
-| ---------- | ---------------------------------------------------------------------------------------------------------- |
-| Client     | Expo Router development shell, hiển thị tiếng Nhật/Việt, kiểm tra API với loading, success, error và retry |
-| API        | NestJS với prefix `/api/v1`, validation, cấu hình môi trường, logging, CORS và định dạng lỗi chung         |
-| Health     | `GET /api/v1/health` trả `{ "status": "ok" }`                                                              |
-| OpenAPI    | Swagger UI và tài liệu JSON trong môi trường development                                                   |
-| Database   | PostgreSQL local, Prisma generate/validate và kiểm tra kết nối thật                                        |
-| Chất lượng | Format, lint, typecheck, 9 backend test và build API/Web đã đạt trong audit M1                             |
-| CI         | GitHub Actions chạy kiểm tra tự động với PostgreSQL tạm; chưa có deployment                                |
+| Thành phần | Khả năng hiện có                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| Client     | Login/Register phương án A, bootstrap phiên, protected account shell và Logout với trạng thái retry |
+| API        | NestJS Auth REST: Register, Login, refresh rotation, Logout và authenticated current-user context   |
+| Health     | `GET /api/v1/health` trả `{ "status": "ok" }`                                                       |
+| OpenAPI    | Swagger UI và tài liệu JSON trong môi trường development                                            |
+| Database   | PostgreSQL, Prisma User/AuthSession/RefreshToken và migration Authentication đã được áp dụng        |
+| Chất lượng | API/client tests, Web–API E2E, responsive visual review và build API/Web/Android/iOS đã đạt         |
+| CI         | GitHub Actions chạy kiểm tra tự động với PostgreSQL tạm; chưa có deployment                         |
 
-Web đã được kiểm tra trong trình duyệt. Chưa xác nhận chạy trên thiết bị Android/iOS trong audit này. Database chưa có bảng nghiệp vụ hoặc migration.
+Web đã được kiểm tra trong Chromium ở 390/1024/1440 px với API/PostgreSQL thật. Android và iOS đã export bundle thành công; chưa chạy trên thiết bị vật lý trong môi trường Windows hiện tại.
 
 ## Công nghệ
 
@@ -77,7 +77,7 @@ cp apps/client/.env.example apps/client/.env
 
 API và Prisma đọc `.env` ở root khi chạy bằng workspace scripts. Expo đọc `apps/client/.env`. File mẫu chỉ chứa giá trị development; file môi trường thật được Git ignore.
 
-`EXPO_PUBLIC_API_URL` là cấu hình công khai của client, mặc định `http://localhost:3000/api/v1`. Không đặt secret vào biến có tiền tố `EXPO_PUBLIC_`. Hai biến JWT trong mẫu được dành cho feature Authentication tương lai và chưa có tác dụng ở M1.
+`EXPO_PUBLIC_API_URL` là cấu hình công khai của client, mặc định `http://localhost:3000/api/v1`. Không đặt secret vào biến có tiền tố `EXPO_PUBLIC_`. Các secret và lifetime Authentication trong `.env` chỉ được đọc bởi API; hãy thay placeholder bằng giá trị mạnh ngoài development.
 
 ## Khởi động PostgreSQL và Prisma
 
@@ -90,9 +90,9 @@ npm run db:check
 
 PostgreSQL được mở ở `localhost:15432` và lưu dữ liệu trong Docker named volume. Giữ `DATABASE_URL` đồng bộ với thông tin PostgreSQL và `POSTGRES_PORT`. Có thể trỏ `DATABASE_URL` tới PostgreSQL riêng.
 
-Ở M1, `db:status` trả exit code 1 vì chưa có migration. `db:check` chạy `SELECT 1` để kiểm tra kết nối. API cũng kiểm tra database khi khởi động.
+`db:status` phải báo migration Authentication đã được áp dụng. `db:check` chạy `SELECT 1` để kiểm tra kết nối. API cũng kiểm tra database khi khởi động.
 
-Khi một feature đã được phê duyệt và thêm model đầu tiên, workflow migration là:
+Workflow tạo migration development cho thay đổi schema đã được phê duyệt:
 
 ```sh
 npm run db:migrate -- --name <migration_name>
@@ -100,7 +100,7 @@ npm run db:generate
 npm run db:status
 ```
 
-Đây là hướng dẫn cho thay đổi schema tương lai; không cần tạo bảng giả để chạy foundation. Kiểm tra SQL trước khi áp dụng vào dữ liệu dùng chung.
+Trong CI/production dùng `npm run db:migrate:deploy`. Luôn kiểm tra SQL trước khi áp dụng vào dữ liệu dùng chung.
 
 Dừng database và giữ dữ liệu:
 
@@ -122,6 +122,8 @@ npm run dev:api
 | http://localhost:3000/api/docs      | Swagger UI                   |
 | http://localhost:3000/api/docs-json | OpenAPI JSON                 |
 
+Authentication nằm dưới `/api/v1/auth`: `register`, `login`, `refresh`, `logout` và protected `me`. Web refresh dùng HttpOnly cookie; native dùng Expo SecureStore. Access token chỉ ở memory.
+
 Swagger chỉ mở khi `NODE_ENV=development`. Health không truy vấn PostgreSQL ở từng request; API sẽ không khởi động nếu kết nối database thất bại.
 
 ## Chạy frontend
@@ -132,7 +134,7 @@ Web, trong terminal khác:
 npm run dev:web
 ```
 
-Mở http://localhost:8081 để xem development shell và kiểm tra kết nối API.
+Mở http://localhost:8081. Khi chưa đăng nhập, router vào `/login`; Register thành công đi thẳng tới `/account` mà không yêu cầu Login lần nữa.
 
 Expo mobile:
 
@@ -158,11 +160,11 @@ npm run build
 
 Dùng `npm run format` để tự định dạng. Kiểm tra tương thích dependency Expo từ thư mục `apps/client` bằng `npx expo install --check`.
 
-Backend test thực hiện request HTTP trên cổng tạm và không cần database. Kiểm tra database thật được thực hiện riêng qua `npm run db:check`.
+API integration tests dùng PostgreSQL local và tự dọn fixture Authentication. Hãy khởi động PostgreSQL và áp dụng migration trước khi chạy `npm test`.
 
 - API build: `apps/api/dist/`; chạy bằng `npm run start --workspace @nihongocore/api`.
 - Web build: `apps/client/dist/`; khi host, cấu hình SPA fallback cho các route phía client.
-- Chưa có frontend unit-test framework hoặc pipeline build native.
+- Client có kiểm thử validation TypeScript; luồng Web–API được kiểm chứng bằng acceptance E2E cục bộ. Native bundle được kiểm tra bằng Expo export cho Android và iOS.
 
 [GitHub Actions](.github/workflows/ci.yml) chạy install, Prisma, format, lint, typecheck, test và build. Workflow không cần production secrets.
 
@@ -171,14 +173,17 @@ Backend test thực hiện request HTTP trên cổng tạm và không cần data
 ```text
 apps/
   client/
-    src/app/             Router, development shell, Query provider
-    src/services/api/    API client tập trung và health request
+    src/app/             Login, Register, account shell và bootstrap routing
+    src/features/auth/   Auth provider, forms, credential adapters và UI phương án A
+    src/services/api/    API client tập trung, access token memory và one-shot refresh
   api/
-    prisma/              Schema và truy vấn kiểm tra kết nối
+    prisma/              Auth schema, migration và truy vấn kiểm tra kết nối
+    src/auth/            Auth endpoints, session/token services và protected guard
+    src/users/           User persistence support và safe profile mapping
     src/common/          Environment, validation, errors, Swagger, CORS
     src/database/        Vòng đời kết nối Prisma
     src/health/          Health endpoint
-    test/                Backend foundation tests
+    test/                Foundation, Authentication và throttling integration tests
 docs/                    Yêu cầu sản phẩm, UX, kiến trúc và API/data
 .github/workflows/       CI
 compose.yaml             PostgreSQL local
@@ -196,10 +201,8 @@ PROJECT_OVERVIEW.md      Tầm nhìn sản phẩm dài hạn
 - [Kế hoạch và quyết định](PROJECT_PLAN.md)
 - [Tầm nhìn dài hạn](PROJECT_OVERVIEW.md)
 
-M1 đã được xác minh. M0 đang chờ phê duyệt **OD-001** (session/refresh strategy) và **OD-011** (hành vi sau đăng ký). Feature kế tiếp là `001-authentication`; việc xuất bản repository không phê duyệt hoặc triển khai feature đó.
+M0, M1 và `001-authentication` đã hoàn tất. **OD-001**, **OD-011** và **AUTH-CL-001** được thực thi theo contract đã duyệt; thiết kế A đã qua kiểm thử chức năng, bảo mật và giao diện. Hạng mục tiếp theo là `002-library-hierarchy`; chưa được bắt đầu.
 
 ## Những file chỉ giữ ở máy phát triển
 
 Theo cấu hình [.gitignore](.gitignore), repository không xuất bản secret, file `.env` thật, khóa/chứng chỉ riêng, dependency đã cài, output build/test, cache, IDE settings và artifact cục bộ.
-
-Các file hướng dẫn agent, skills, Spec Kit, SuperDesign, CKW, feature-workflow artifacts và báo cáo audit nội bộ cũng được giữ local. Clone repository cung cấp source code, cấu hình build/CI, mẫu môi trường và tài liệu sản phẩm; không tự cài các tích hợp agent của máy tác giả.

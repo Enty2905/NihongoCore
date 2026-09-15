@@ -4,12 +4,7 @@ package-lock.json
 apps/api/src/generated/
 .expo/
 artifacts/
-AGENTS.md
-PROJECT_OVERVIEW.md
-docs/
 .npm-cache/
 **/dist-test/
-
-# Preserve upstream AI tooling templates and skills.
-.agents/skills/
-.specify/
+PROJECT_OVERVIEW.md
+docs/

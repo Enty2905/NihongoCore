@@ -19,7 +19,7 @@ Xây dựng ứng dụng học và ôn tập tiếng Nhật đa nền tảng ho�
 
 Sản phẩm là một **Personal Japanese Learning System**, không chỉ là flashcard app.
 
-Trong MVP, sản phẩm **không phải AI-native runtime application**. AI chủ yếu được sử dụng để hỗ trợ quá trình phát triển phần mềm: phân tích yêu cầu, thiết kế, coding, review, test và documentation.
+MVP tập trung vào các luồng học có quy tắc rõ ràng và được backend kiểm soát. Các khả năng tạo nội dung hoặc chấm dịch tự động nằm ngoài phạm vi hiện tại.
 
 ---
 
@@ -166,7 +166,7 @@ Business logic phải hoạt động nhất quán trên Web, Android và iOS.
 - Kanji Dictionary.
 - Offline-first.
 - Sync conflicts.
-- AI translation grading.
+- Automated translation grading.
 - Social / leaderboard / marketplace.
 
 ---
@@ -204,6 +204,26 @@ Logout phải vô hiệu hóa hoặc thu hồi session/refresh token theo chiế
 
 ### FR-AUTH-006
 Mật khẩu phải được hash trước khi lưu.
+
+### Authentication clarification baseline — approved 2026-09-14
+
+OD-001, OD-011 và AUTH-CL-001 đã được người dùng phê duyệt và được triển khai trong feature 001-authentication ngày 2026-09-15.
+
+- FR-AUTH-001/003: Register thành công tạo user và authenticated session, thiết lập trạng thái đăng nhập và vào authenticated application shell; không yêu cầu Login thủ công lần nữa. Không triển khai Dashboard/Library trong feature này.
+- FR-AUTH-002: Login sai mật khẩu và tài khoản không tồn tại có cùng phản hồi công khai 401 / INVALID_CREDENTIALS; không phân biệt nguyên nhân.
+- FR-AUTH-003/004/005: mỗi Login tạo session độc lập; browser tabs trong một profile có thể dùng chung Web session. Rotation, thời hạn cấu hình tập trung, thu hồi session hiện tại và replay-family policy theo architecture §11. Không có Logout All trong MVP hiện tại.
+- AUTH-CL-001 / NFR-SEC-003: password từ 15 đến 128 Unicode code points; cho phép Unicode/khoảng trắng, không ép tổ hợp ký tự, không âm thầm trim/normalize/truncate. Frontend và backend phải dùng cùng cách đếm.
+- Email: trim khoảng trắng hai đầu và lowercase representation dùng cho lookup/uniqueness; giữ nguyên dấu chấm và plus alias. Giới hạn đã chọn cho API/database là 254 ký tự sau trim; cần cú pháp email hợp lệ.
+- Display name tùy chọn, trim, tối đa 80 Unicode code points; rỗng sau trim được xem như không cung cấp.
+- Register với input hợp lệ nhưng email chuẩn hóa đã tồn tại trả 409 / EMAIL_ALREADY_EXISTS; không tạo thêm account/session hoặc ghi đè account cũ. Hai request đồng thời không được tạo hai account.
+- NFR-SEC-001: GET /api/v1/auth/me chỉ trả profile an toàn của user trong validated authentication context; không lấy ownership từ userId client gửi.
+- Duplicate Register công khai trạng thái email đã tồn tại theo quyết định người dùng; không áp dụng cách công khai này cho Login. Email chưa được xác minh quyền sở hữu.
+- Password và token không được log; server chỉ lưu hash refresh token. Contract chi tiết nằm tại data/API §4/8; UX thành công/thất bại tại UX §16.
+
+Không thêm Forgot Password, email verification, OAuth/social login, MFA, roles/admin hoặc session-list UI.
+
+Trạng thái triển khai: DONE. Contract được kiểm chứng bằng API integration/security tests, Web–API E2E, Prisma migration status, Swagger và Expo exports Web/Android/iOS. Authenticated shell chỉ hiển thị safe current-user profile và Logout; không mở rộng sang Dashboard hoặc Library.
+
 
 ---
 
@@ -505,21 +525,21 @@ Full SRS, Audio và Offline không được đưa vào MVP nếu chưa thay đ�
 
 ## US-AUTH-001 — Login
 
-**As a** registered learner  
-**I want** to log in  
+**As a** registered learner
+**I want** to log in
 **So that** I can access my personal learning library.
 
 ### Acceptance Criteria
 
-**Given** email/password hợp lệ  
-**When** user submit login  
+**Given** email/password hợp lệ
+**When** user submit login
 **Then**
 - backend xác thực user,
 - trả token theo contract,
 - client vào authenticated area.
 
-**Given** password sai  
-**When** user submit login  
+**Given** password sai
+**When** user submit login
 **Then**
 - request bị từ chối,
 - không trả token,
@@ -527,16 +547,26 @@ Full SRS, Audio và Offline không được đưa vào MVP nếu chưa thay đ�
 
 ---
 
+## US-AUTH-002 — Register and enter authenticated state
+
+Given email chưa được dùng và input hợp lệ, khi Register thành công thì user và session được tạo nhất quán; client vào authenticated shell mà không nhập lại credentials. Nếu thất bại trước commit thì không để lại account/session thành công một phần.
+
+Given email chuẩn hóa đã tồn tại, khi input còn lại hợp lệ thì trả 409 / EMAIL_ALREADY_EXISTS, không trả profile/token hoặc cập nhật account cũ. Nếu response thành công bị mất, retry không tạo bản sao; Login chỉ là recovery cho kết quả chưa xác nhận.
+
+Các scenario password/email/display-name phải kiểm tra các biên đã nêu ở §6.1, kể cả Unicode và khoảng trắng. GET /api/v1/auth/me phải từ chối thiếu/sai credentials và chỉ trả user hiện tại khi đã xác thực.
+
+---
+
 ## US-LIB-001 — Create Deck
 
-**As a** learner  
-**I want** to create a Deck  
+**As a** learner
+**I want** to create a Deck
 **So that** I can group related learning content.
 
 ### Acceptance Criteria
 
-**Given** user đã login  
-**When** user tạo Deck với name hợp lệ  
+**Given** user đã login
+**When** user tạo Deck với name hợp lệ
 **Then**
 - Deck được tạo thuộc user hiện tại,
 - response trả Deck mới,
@@ -546,14 +576,14 @@ Full SRS, Audio và Offline không được đưa vào MVP nếu chưa thay đ�
 
 ## US-CARD-001 — Create Vocabulary Card
 
-**As a** learner  
-**I want** to save vocabulary information  
+**As a** learner
+**I want** to save vocabulary information
 **So that** I can practice it in different exercise types.
 
 ### Acceptance Criteria
 
-**Given** một Deck thuộc user  
-**When** user submit Vocabulary Card hợp lệ  
+**Given** một Deck thuộc user
+**When** user submit Vocabulary Card hợp lệ
 **Then**
 - root Card được tạo,
 - Vocabulary detail được tạo,
@@ -564,8 +594,8 @@ Full SRS, Audio và Offline không được đưa vào MVP nếu chưa thay đ�
 
 ## US-STUDY-001 — Start study session
 
-**As a** learner  
-**I want** to start a session from selected decks  
+**As a** learner
+**I want** to start a session from selected decks
 **So that** I can practice a focused set of content.
 
 ### Acceptance Criteria
@@ -586,8 +616,8 @@ Full SRS, Audio và Offline không được đưa vào MVP nếu chưa thay đ�
 
 ## US-ANSWER-001 — Three-attempt typing rule
 
-**As a** learner  
-**I want** to retry an incorrect typing answer  
+**As a** learner
+**I want** to retry an incorrect typing answer
 **So that** I can recall the answer before it is revealed.
 
 ### Scenario A — First wrong answer
@@ -638,14 +668,14 @@ Full SRS, Audio và Offline không được đưa vào MVP nếu chưa thay đ�
 
 ## US-REVIEW-001 — Preserve learning history
 
-**As a** learner  
-**I want** my previous attempts to remain available  
+**As a** learner
+**I want** my previous attempts to remain available
 **So that** I can understand my learning history.
 
 ### Acceptance Criteria
 
-**Given** Review đã tồn tại  
-**When** Card content được sửa  
+**Given** Review đã tồn tại
+**When** Card content được sửa
 **Then**
 - Review cũ vẫn tồn tại,
 - Card edit không delete Review,
@@ -655,13 +685,13 @@ Full SRS, Audio và Offline không được đưa vào MVP nếu chưa thay đ�
 
 ## US-IMPORT-001 — Safe CSV import
 
-**As a** learner  
-**I want** to preview imported data before saving  
+**As a** learner
+**I want** to preview imported data before saving
 **So that** I do not accidentally corrupt my library.
 
 ### Acceptance Criteria
 
-**When** CSV được upload  
+**When** CSV được upload
 **Then**
 - backend parse,
 - trả preview,
@@ -676,63 +706,63 @@ Full SRS, Audio và Offline không được đưa vào MVP nếu chưa thay đ�
 # 10. Feature Specification Summary
 
 ## FEAT-01 Authentication
-Input: credentials.  
-Output: authenticated session.  
+Input: credentials.
+Output: authenticated session.
 Main rules: hashing, JWT validation, refresh lifecycle, no secret logging.
 
 ## FEAT-02 Library
-Input: Folder/Deck CRUD commands.  
-Output: user-owned hierarchy.  
+Input: Folder/Deck CRUD commands.
+Output: user-owned hierarchy.
 Main rules: ownership enforced server-side.
 
 ## FEAT-03 Cards
-Input: typed card data.  
-Output: root Card + subtype detail.  
+Input: typed card data.
+Output: root Card + subtype detail.
 Main rules: type-specific validation; Review history preserved.
 
 ## FEAT-04 Import
-Input: CSV + mapping + duplicate decisions.  
-Output: created/updated Cards after confirmation.  
+Input: CSV + mapping + duplicate decisions.
+Output: created/updated Cards after confirmation.
 Main rules: preview-first; no silent overwrite.
 
 ## FEAT-05 Study Session
-Input: selected decks/settings.  
-Output: ordered/generated exercises.  
+Input: selected decks/settings.
+Output: ordered/generated exercises.
 Main rules: only eligible user Cards; settings snapshot.
 
 ## FEAT-06 Answer Evaluation
-Input: exercise, answer, attempt state.  
-Output: correct/incorrect/retry/reveal.  
+Input: exercise, answer, attempt state.
+Output: correct/incorrect/retry/reveal.
 Main rules: normalization, accepted answers, 3-attempt rule.
 
 ## FEAT-07 Review
-Input: final exercise result.  
-Output: immutable-ish historical Review record.  
+Input: final exercise result.
+Output: immutable-ish historical Review record.
 Main rules: one completed exercise creates one Review.
 
 ## FEAT-08 Basic Mastery
-Input: Review outcome.  
-Output: updated User+Card+Skill mastery.  
+Input: Review outcome.
+Output: updated User+Card+Skill mastery.
 Main rules: do not collapse mastery to one boolean.
 
 ## FEAT-09 Search
-Input: query/filter.  
-Output: paginated user-owned results.  
+Input: query/filter.
+Output: paginated user-owned results.
 Main rules: MVP starts simple; advanced FTS deferred.
 
 ---
 
 # 11. Open Questions Requiring Human Decision
 
-1. Refresh token strategy: store hashed refresh token per session hay per user?
+1. **Đã phê duyệt (OD-001, 2026-09-14):** session độc lập, refresh hash-only/rotation và thời hạn cấu hình tập trung; xem architecture §11 và data/API §8.
 2. "Delete" Folder/Deck/Card dùng hard delete hay soft delete trong MVP?
-3. **Đã quyết định (OD-012):** root Card và các bảng subtype Vocabulary/Sentence/Grammar theo AGENTS §17 và data contract §2–5. Chi tiết schema/migration thuộc feature spec; public API vẫn chờ OD-003.
+3. **Đã quyết định (OD-012):** root Card và các bảng subtype Vocabulary/Sentence/Grammar theo data contract §2–5. Chi tiết schema/migration thuộc feature spec; public API vẫn chờ OD-003.
 4. Basic Mastery formula cụ thể là gì?
 5. Khi user override "câu trả lời của tôi cũng đúng", có tự thêm Accepted Answer hay cần confirm riêng?
 6. Duplicate detection trong MVP áp dụng chính xác cho ba card types nào?
 7. Grammar example có nằm trong MVP schema riêng hay lưu đơn giản trong text field?
 8. Search MVP có cần tìm tiếng Việt không dấu hay chỉ `ILIKE` literal?
-9. **Đã quyết định (OD-014):** KANJI không thuộc MVP; xem §4.2 và AGENTS §7.2/20.1.
-10. **Đã quyết định (OD-014):** Basic Mastery thuộc MVP; Full SRS/Due Today không thuộc MVP, hiện dành cho V1.2 theo FR-MAS-004, RULE-013 và AGENTS. Thay đổi scope phải được phê duyệt riêng.
+9. **Đã quyết định (OD-014):** KANJI không thuộc MVP; xem §4.2 và RULE-013.
+10. **Đã quyết định (OD-014):** Basic Mastery thuộc MVP; Full SRS/Due Today không thuộc MVP, hiện dành cho V1.2 theo FR-MAS-004 và RULE-013. Thay đổi scope phải được phê duyệt riêng.
 
-Tracker và gate theo feature nằm tại [PROJECT_PLAN.md](../PROJECT_PLAN.md). OD-001 (session/refresh) và OD-011 (hành vi sau đăng ký) đang chặn `001-authentication`; đây là các quyết định chưa được phê duyệt.
+Tracker và gate theo feature nằm tại [PROJECT_PLAN.md](../PROJECT_PLAN.md). OD-001 và OD-011 đã APPROVED, AUTH-CL-001 đã RESOLVED ngày 2026-09-14; feature `001-authentication` triển khai và xác minh xong ngày 2026-09-15. Các open decision khác vẫn giữ nguyên gate của feature tương ứng.

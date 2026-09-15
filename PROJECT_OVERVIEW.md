@@ -1,6 +1,6 @@
 # ỨNG DỤNG ÔN TẬP TIẾNG NHẬT ĐA NỀN TẢNG
 
-> Background / long-term vision. MVP scope, stack and source-of-truth priority are governed by `AGENTS.md` and approved `docs/`. Roadmap examples involving SRS, Audio, Offline, Kanji or expanded account features are not permission to add them to MVP. Current milestone and decision status: `PROJECT_PLAN.md`.
+> Background / long-term vision. Approved documents in `docs/` govern the current MVP scope and technology stack. Roadmap examples involving SRS, Audio, Offline, Kanji or expanded account features do not add them to the MVP. Current milestone and decision status: `PROJECT_PLAN.md`.
 
 # 1. Tổng quan dự án
 
@@ -956,7 +956,7 @@ MVP sử dụng:
 - Text normalization.
 - Manual override.
 
-Không cần sử dụng AI ngay.
+Không cần hệ thống tạo nội dung tự động ở giai đoạn đầu.
 
 ---
 
@@ -3054,8 +3054,8 @@ Offline sync nên được thực hiện sau khi mô hình dữ liệu online đ
 
 Không cần làm ngay:
 
-- AI chấm toàn bộ câu dịch.
-- AI tạo lesson tự động.
+- Tự động chấm toàn bộ câu dịch.
+- Tự động tạo lesson.
 - Social Network.
 - Chat.
 - Leaderboard.

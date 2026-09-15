@@ -25,6 +25,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? (body as Record<string, unknown>)
         : {};
     const serverError = status >= 500;
+    const safeApplicationError =
+      exception instanceof HttpException && typeof payload.code === 'string';
 
     if (serverError) {
       // Never log request bodies, configuration, or untrusted exception messages.
@@ -33,19 +35,24 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     response.status(status).json({
       statusCode: status,
-      code: serverError
-        ? 'INTERNAL_SERVER_ERROR'
-        : typeof payload.code === 'string'
-          ? payload.code
+      code: safeApplicationError
+        ? payload.code
+        : serverError
+          ? 'INTERNAL_SERVER_ERROR'
           : (HttpStatus[status] ?? 'HTTP_ERROR'),
-      message: serverError
-        ? 'Internal server error'
-        : typeof payload.message === 'string'
+      message:
+        safeApplicationError && typeof payload.message === 'string'
           ? payload.message
-          : typeof body === 'string'
-            ? body
-            : 'Request failed',
-      details: serverError ? {} : (payload.details ?? {}),
+          : serverError
+            ? 'Internal server error'
+            : typeof body === 'string'
+              ? body
+              : 'Request failed',
+      details: safeApplicationError
+        ? (payload.details ?? {})
+        : serverError
+          ? {}
+          : (payload.details ?? {}),
     });
   }
 }

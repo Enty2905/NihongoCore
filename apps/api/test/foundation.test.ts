@@ -34,6 +34,12 @@ async function startApp(mode: 'development' | 'production') {
     NODE_ENV: mode,
     DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
     CORS_ORIGINS: 'http://localhost:8081',
+    JWT_ACCESS_SECRET: 'test-access-secret-at-least-thirty-two-characters',
+    JWT_REFRESH_SECRET: 'test-refresh-secret-at-least-thirty-two-characters',
+    AUTH_ARGON2_MEMORY_KIB: 8192,
+    AUTH_ARGON2_TIME_COST: 1,
+    AUTH_ARGON2_PARALLELISM: 1,
+    AUTH_THROTTLE_LIMIT: 1000,
   });
   const module = await Test.createTestingModule({
     imports: [HealthModule],
@@ -163,6 +169,8 @@ it('rejects invalid configuration without exposing credential values', () => {
         DATABASE_URL: 'sensitive-invalid-value',
         API_PORT: 'invalid',
         CORS_ORIGINS: '*',
+        JWT_ACCESS_SECRET: 'short',
+        JWT_REFRESH_SECRET: 'short',
       }),
     (error: unknown) => {
       assert.ok(error instanceof Error);

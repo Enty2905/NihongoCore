@@ -425,7 +425,7 @@ Bottom Navigation
 
 ---
 
-# 14. AI Design Review Checklist
+# 14. Design Review Checklist
 
 Mỗi review phải ghi:
 
@@ -489,6 +489,31 @@ Một screen sẵn sàng cho implementation khi:
 - Mobile/Web differences được ghi nếu có.
 - Accessibility issues chính đã review.
 
-## 16. Authentication decision gate
+## 16. Authentication behavior — approved 2026-09-14
 
-OD-001 quyết định vòng đời session và trải nghiệm khi token hết hạn/bị thu hồi; OD-011 quyết định có tự đăng nhập sau đăng ký hay chuyển sang Login. Cả hai đang chờ phê duyệt trong [PROJECT_PLAN.md](../PROJECT_PLAN.md). Không suy ra các hành vi này từ route list hoặc mockup; wireframe và hướng visual lớn vẫn cần human selection theo AGENTS §10 trước implementation.
+OD-001 và OD-011 đã APPROVED; AUTH-CL-001 đã RESOLVED trong [PROJECT_PLAN.md](../PROJECT_PLAN.md). UI phương án A “Reading desk” đã được người dùng chọn và triển khai ngày 2026-09-15.
+
+### Register / Login
+
+- Register thành công: create user -> create authenticated session -> establish authenticated state -> authenticated application shell. Không yêu cầu Login thủ công lần nữa.
+- Login thành công vào cùng authenticated shell. Trong feature này shell chỉ cần safe current-user context và Logout; không thiết kế/triển khai Dashboard, Library hoặc feature khác.
+- Form có default, pending/disabled, validation, success và retryable error states; dùng được bằng keyboard, touch, paste/password manager.
+- Password 15-128 Unicode code points, cho phép Unicode/khoảng trắng, không ép tổ hợp ký tự và không âm thầm trim/truncate. Hiển thị quy tắc trước khi submit.
+- Email trim/lowercase cho lookup/uniqueness, tối đa 254 ký tự sau trim; không bỏ dấu chấm/plus alias. Display name optional, trim, tối đa 80 Unicode code points; blank xem như absent.
+- Register trùng email hiển thị lỗi theo 409 / EMAIL_ALREADY_EXISTS và có đường tới Login. Đây là hành vi công khai duplicate được duyệt.
+- Login sai password và account không tồn tại phải hiện cùng thông báo chung; không nói điều kiện nào sai.
+- Không thêm Forgot Password, email verification, social login, MFA hoặc roles/admin controls.
+- Response Register bị mất là trạng thái chưa xác nhận, không kết luận account không được tạo. Retry không ghi đè account; Login là recovery khi cần.
+
+### Session restore / refresh / Logout
+
+- Sau reload/restart, xác minh current user qua server trước khi hiện private content. Chưa xác minh thì pending; lỗi mạng thì retry; refresh hết hạn/bị thu hồi thì về Login.
+- Các tab chung browser profile có thể dùng chung session. Không để account cũ hiển thị sau Login/account switch; không giải thích tab như một device session độc lập.
+- Refresh phối hợp giữa request/tab. Reuse credential cũ thu hồi family, nên lost-response/concurrent-reuse có thể buộc Login lại; không retry vô hạn.
+- Logout thành công chỉ kết thúc session hiện tại, dọn credentials/private state và về Login; session ở client khác giữ độc lập. Không có Logout All/session-list screen.
+- Nếu Logout không xác nhận được do mạng, chặn private use, báo chưa xác nhận và cho retry; không tự khôi phục pending session. Late response không được đưa user trở lại trạng thái authenticated.
+- GET /api/v1/auth/me chỉ cung cấp profile hiện tại an toàn cho shell; không có profile editing hoặc lựa chọn userId.
+
+### Design result
+
+Phương án A dùng bố cục 40/60 trên Web rộng, header gọn trên mobile, form tối đa 440 px, một primary action rõ và Logout dạng secondary. Login/Register/account cùng các trạng thái validation, pending, retry và error đã được render ở 390/1024/1440 px; đánh giá giao diện độc lập kết luận PASS, không còn visual blocker. Input có accessibility label; field/button/link có focus hiển thị và target tối thiểu 44 px.

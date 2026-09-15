@@ -14,24 +14,6 @@ artifacts/
 .npm-cache/
 **/dist-test/
 
-# Local AI agents, skills, prompts and feature-workflow artifacts
-.agents/
-.codex/
-.claude/
-.cursor/
-.specify/
-.superdesign/
-/specs/
-AGENTS.md
-AGENTS.override.md
-CLAUDE.md
-GEMINI.md
-CODEX.md
-.cursorrules
-/.github/copilot-instructions.md
-/docs/AI_WORKFLOW_AND_RULES.md
-/docs/FOUNDATION_AUDIT.md
-
 # Local editor configuration
 .vscode/
 .idea/

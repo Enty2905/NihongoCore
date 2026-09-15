@@ -404,15 +404,41 @@ Backend phải:
 - validate DTO,
 - enforce business rules.
 
-## Authentication
+## Authentication — OD-001 / OD-011 approved 2026-09-14
 
-```text
-Access Token
-+
-Refresh Token
-```
+Access JWT + rotated opaque Refresh Token. Mỗi Login tạo session độc lập; các tab chung browser profile có thể chia sẻ Web session. Không tự thu hồi session khác chỉ vì có Login mới. User/session lấy từ validated authentication context.
 
-Chi tiết rotation/storage cần human decision (OD-001 trong [PROJECT_PLAN.md](../PROJECT_PLAN.md)). Các phương án trong gói quyết định là đề xuất, chưa phải architecture đã duyệt; không triển khai Authentication trước khi OD-001 được chốt.
+| Central configuration | Approved default |
+| --- | --- |
+| Access token lifetime | 15 minutes |
+| Refresh inactivity lifetime | 7 days |
+| Absolute session lifetime | 30 days |
+
+Đọc và validate các lifetime qua cấu hình tập trung, không rải hard-coded values. Inactivity tính từ session creation/lần refresh thành công gần nhất; access request không kéo dài refresh inactivity. Rotation không kéo dài absolute deadline.
+
+- Backend validate signature/allowed algorithm, issuer, audience, expiry và active session/user cho protected request; thu hồi session chặn request được authorize sau khi revocation commit. Không tuyên bố hủy ngược request đã authorize.
+- Server chỉ lưu refresh-token hash cùng metadata đủ để liên kết token family, expiry, consumption và revocation. Rotation nguyên tử tạo tối đa một successor.
+- Reuse rotated/revoked refresh token thu hồi family/session tương ứng, gồm descendant đang active; không thu hồi session khác. Unknown token không được tự chọn family/user bằng input client.
+- Không chấp nhận replay grace cho token cũ. Concurrent duplicate refresh hoặc response loss có thể yêu cầu Login lại; client coordination thuộc kế hoạch kỹ thuật.
+- Logout chỉ thu hồi session hiện tại, gồm khi chứng minh session bằng refresh credential do access hết hạn. Race refresh/logout không được để lại successor active sau Logout thành công.
+- Cho phép thiết kế khả năng revoke-all sau này, chưa triển khai endpoint/UI Logout All. Schema vật lý hiện dùng `User`, `AuthSession` và `RefreshToken`; token lineage được giữ để phát hiện reuse.
+- Auth lookup unavailable phải fail closed. Password/access/refresh token không được log.
+
+### Web / Native boundary
+
+Web refresh credentials nằm trong host-only HttpOnly + Secure + SameSite=Lax cookie; không trả refresh token trong Web JSON, không dùng localStorage/sessionStorage, không cho normal application JavaScript đọc. Access token ở memory và được gửi bằng Bearer authorization.
+
+Dùng HTTPS và same-site Web/API cho topology cookie hiện tại. Khi khác origin, cấu hình credentialed CORS allowlist cụ thể. Cookie-bearing auth operations phải có Origin validation và CSRF protection; CORS, SameSite hoặc client-type header đơn lẻ không đủ. Không cho browser-origin request chọn native mode để lấy raw refresh token. Local HTTP exception chỉ thuộc development. Chi tiết cookie/header/CSRF và deployment host thuộc planning trong boundary đã duyệt.
+
+Native dùng Expo SecureStore cho refresh credential, access ở memory. Không có insecure fallback khi storage hỏng/không đọc được. Client phải xác minh identity với server trước khi hiện private content; stale response/cache không được khôi phục identity cũ sau Logout/account switch.
+
+Khi Logout không xác nhận được do mạng, không báo thành công giả; chặn private use và có retry/pending state. Cơ chế lưu pending/logout cleanup được xác định trong plan, không thêm Offline Sync.
+
+### Register success and current-user context
+
+OD-011: Register tạo user và authenticated session nhất quán rồi vào authenticated shell, không yêu cầu Login lại. Không tạo Dashboard/Library trong feature này.
+
+GET /api/v1/auth/me là protected proof cho current-user context; chỉ trả id, email, optional displayName, không nhận userId làm identity. AUTH-CL-001 quy định input/error contract tại data/API §8.
 
 ## Authorization Rule
 
@@ -474,36 +500,45 @@ Database migration phải review khả năng mất dữ liệu.
 # 13. Architecture Decisions (ADR Summary)
 
 ## ADR-001 — Modular Monolith for MVP
-**Status:** Accepted  
-**Decision:** NestJS modular monolith.  
-**Reason:** giảm operational complexity.  
+**Status:** Accepted
+**Decision:** NestJS modular monolith.
+**Reason:** giảm operational complexity.
 **Future trigger:** chỉ tách service nếu có bottleneck/organizational need rõ.
 
 ## ADR-002 — Backend as Business Rule Authority
-**Status:** Accepted  
-**Decision:** answer evaluation, review semantics, mastery ở backend.  
+**Status:** Accepted
+**Decision:** answer evaluation, review semantics, mastery ở backend.
 **Consequence:** client chỉ hỗ trợ UX validation.
 
 ## ADR-003 — Root Card + Type-specific Details
-**Status:** Accepted baseline (OD-012; AGENTS §17 and data contract §2–5); feature schema/migration details remain pending  
-**Decision:** `cards` làm root, subtype tables giữ detail.  
-**Reason:** Review/Tags/Mastery tham chiếu thống nhất.  
+**Status:** Accepted baseline (OD-012; data contract §2–5); feature schema/migration details remain pending
+**Decision:** `cards` làm root, subtype tables giữ detail.
+**Reason:** Review/Tags/Mastery tham chiếu thống nhất.
 **Trade-off:** query cần joins.
 
 ## ADR-004 — REST v1
-**Status:** Accepted  
-**Decision:** prefix `/api/v1`.  
+**Status:** Accepted
+**Decision:** prefix `/api/v1`.
 **Reason:** contract rõ, Swagger đơn giản.
 
 ## ADR-005 — Full SRS Deferred
-**Status:** Accepted baseline (OD-014; AGENTS §7.2/DOMAIN-013, FR-MAS-004 and RULE-013)  
-**Decision:** Basic Mastery trong MVP; Full SRS V1.2.  
+**Status:** Accepted baseline (OD-014; DOMAIN-013, FR-MAS-004 and RULE-013)
+**Decision:** Basic Mastery trong MVP; Full SRS V1.2.
 **Consequence:** không để schedule logic block core loop.
 
 ## ADR-006 — Online-first before Offline-first
-**Status:** Accepted from project overview  
-**Decision:** ổn định data model online trước khi SQLite/sync.  
+**Status:** Accepted from project overview
+**Decision:** ổn định data model online trước khi SQLite/sync.
 **Reason:** tránh conflict model quá sớm.
+
+---
+
+## ADR-007 — Independent Authentication Sessions
+
+**Status:** Approved by human, 2026-09-14 (OD-001/OD-011/AUTH-CL-001).
+**Decision:** Enforce section 11 lifecycle and platform boundaries within NestJS/PostgreSQL/Prisma; Register establishes authentication immediately.
+**Trade-offs:** Active-session validation adds an authoritative lookup; strict refresh replay handling can require reauthentication after a lost response. Browser-profile tabs share cookie context. Duplicate registration deliberately returns EMAIL_ALREADY_EXISTS while Login remains nondisclosing.
+**Implementation:** Completed 2026-09-15 with NestJS AuthModule, Prisma Authentication migration, Expo client/session adapters and the approved Reading desk UI. External identity providers and Logout All remain excluded.
 
 ---
 

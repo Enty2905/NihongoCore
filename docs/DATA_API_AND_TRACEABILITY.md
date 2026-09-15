@@ -110,8 +110,10 @@ updated_at
 ```
 
 Constraints:
-- email unique.
-- password hash only.
+- Email lookup/uniqueness uses trimmed + lowercased representation; preserve dots/plus aliases. AUTH-CL-001 selects a 254-character maximum after trim for the API/database contract.
+- Password hash only; plaintext password 15-128 Unicode code points with spaces allowed and no silent trimming, normalization or truncation.
+- display_name optional, trimmed, maximum 80 Unicode code points; blank is absent.
+- Exact physical column/index mapping belongs to the feature plan; normalized uniqueness must also be enforced by the database.
 
 ## refresh_tokens
 
@@ -126,7 +128,9 @@ revoked_at
 created_at
 ```
 
-> Exact refresh strategy requires human decision (OD-001). These suggested fields do not approve token granularity, lifetime, rotation or revocation semantics.
+> OD-001 APPROVED 2026-09-14. This minimal historical field list is not the complete auth schema. Model independent authentication sessions and refresh-token families with hash-only persistence, consumption/rotation lineage, revocation, last renewal and absolute expiry. Retain enough rotated/revoked hash metadata to identify reuse until the session can no longer be valid. Exact tables/columns, indexes and cleanup belong to the feature plan; no Prisma migration is created here.
+
+Authentication sessions are distinct from study_sessions. The ERD above is a product overview, not authority to omit the session/family relationship in the approved auth model. A refresh credential belongs to one server-owned session/user; never infer this relation from client userId.
 
 ## folders
 
@@ -401,57 +405,103 @@ Frontend xử lý theo `code`, không parse message.
 
 ---
 
-# 8. Auth API
+# 8. Auth API — approved 2026-09-14
 
-## POST `/api/v1/auth/register`
+Authority: OD-001, OD-011 and AUTH-CL-001 in [PROJECT_PLAN.md](../PROJECT_PLAN.md). Feature 001-authentication implements these contracts through the five endpoints below.
 
-Request:
+## Shared identity and input rules
+
+- email: valid syntax, trim surrounding whitespace, lowercase normalized lookup/uniqueness value, maximum 254 characters after trim. Do not remove dots or plus aliases.
+- password: 15-128 Unicode code points; spaces/Unicode allowed; no composition rules, silent trimming, normalization or truncation.
+- displayName: optional, trim, maximum 80 Unicode code points; blank after trim is absent.
+- User profile allowlist: id, email, optional displayName. Never return password_hash, token_hash, secrets or internal session metadata as profile fields.
+- Validate inputs server-side. Unsupported ownership/privilege fields cannot influence identity.
+
+## Session and transport contract
+
+Each successful Login creates an independent authentication session; tabs sharing a browser profile may use the same Web session. Central configuration supplies approved defaults: access **15 minutes**, refresh inactivity **7 days**, absolute session **30 days**. Inactivity starts at creation/last successful refresh; absolute expiry never moves through rotation.
+
+Web: access token in memory/Bearer authorization; refresh in host-only HttpOnly + Secure + SameSite=Lax cookie, never in Web JSON or normal application JavaScript. Require appropriate Origin/CSRF protection and explicit credentialed CORS for approved origins. Cookie-based production topology is HTTPS/same-site; development exceptions are isolated.
+
+Native: access token in memory; refresh credential is delivered through the native response contract and persisted in Expo SecureStore, then submitted through the native refresh/logout contract. `X-Client-Platform: web|native` selects transport only and is not authentication. Web POSTs additionally require the allowlisted `Origin` and `X-CSRF-Protection: 1`; browser-origin requests cannot select native mode and ambiguous credential sources are rejected.
+
+Only refresh hashes and necessary lifecycle metadata are persisted server-side. JWT validity plus active user/session governs protected requests; no client userId is trusted. No token logging.
+
+## POST /api/v1/auth/register
+
+Input: email, password, optional displayName, plus only the platform transport metadata selected in planning.
+
+Successful registration creates the user and session consistently, establishes access/refresh credentials through the selected Web/native transport, returns the safe user profile and enters the authenticated shell. No manual Login follows success; no Dashboard/Library functionality is included.
+
+With otherwise valid input, duplicate normalized email returns **409 / EMAIL_ALREADY_EXISTS**:
 
 ```json
 {
+  "statusCode": 409,
+  "code": "EMAIL_ALREADY_EXISTS",
+  "message": "An account with this email already exists.",
+  "details": {}
+}
+```
+
+Clients branch on code, not message wording. No profile or credentials are included on duplicate failure. Concurrent Register requests for one normalized identity create at most one user. Invalid input uses **400 / VALIDATION_ERROR** with safe field details.
+
+Creation failure before commit rolls back the account/session result. A lost response after commit is uncertain success; retry cannot overwrite the user or create a duplicate, and Login may recover access.
+
+## POST /api/v1/auth/login
+
+Input: email/password and the approved platform transport metadata.
+
+Success creates an independent session and establishes access/refresh credentials with the safe profile; the client enters the authenticated shell. No automatic revoke-all behavior.
+
+Nonexistent account and wrong password return the same **401 / INVALID_CREDENTIALS**, identical public body shape/message and no user data or credentials. Comparable verification work avoids an intentional quick-exit enumeration path:
+
+```json
+{
+  "statusCode": 401,
+  "code": "INVALID_CREDENTIALS",
+  "message": "Invalid email or password.",
+  "details": {}
+}
+```
+
+## POST /api/v1/auth/refresh
+
+Use the approved Web cookie or native credential channel. Valid active credentials rotate atomically, consuming the old token and establishing one successor plus new access. No extra session is created by refresh.
+
+Expired/revoked/unknown credentials fail unauthenticated with generic errors and no replacement credentials. Reuse of a rotated/revoked token revokes its affected family/session, including active descendants. Other sessions remain independent; unknown tokens cannot select a victim family.
+
+Strict replay handling has no grace acceptance of old credentials. Two refreshes using one token leave at most one initial successor and then revoke the family on reuse. A lost successful rotation response may require Login. Clients coordinate renewal and never retry indefinitely.
+
+## POST /api/v1/auth/logout
+
+Revoke only the current proven session. Expired access may be accompanied by verifiable refresh credentials solely for revocation, without minting access. Repeated/unknown-credential Logout does not leak session existence or create credentials.
+
+Successful Logout clears current client authentication state and private caches. Subsequent refresh and requests authorized after revocation fail; refresh/logout races cannot leave an active descendant after successful Logout.
+
+Unconfirmed network failure must not be presented as confirmed server revocation. Client private use is blocked with retry/pending feedback, and a late response cannot revive the session. No Logout All endpoint or session-list UI is included.
+
+## GET /api/v1/auth/me
+
+Protected current-user endpoint; derives identity only from validated authentication context, never a body/query/header userId. Missing/invalid authentication returns 401.
+
+HTTP 200 returns a safe profile object:
+
+```json
+{
+  "id": "current-user-id",
   "email": "user@example.com",
-  "password": "********",
-  "displayName": "Optional"
+  "displayName": "Learner"
 }
 ```
 
-Response shape: team quyết định token trả ngay hay yêu cầu login sau register (OD-011, chưa phê duyệt).
+displayName is nullable when absent. Never include hashes, refresh credentials, private metadata or another user's profile.
 
-## POST `/api/v1/auth/login`
+## Implemented contract details
 
-Request:
+Register returns 201; Login and Refresh return 200; Logout returns 204; `/me` returns 200. Web success bodies never contain refresh credentials. Native Register/Login responses include access token, refresh token and safe user; native Refresh returns the rotated pair. Refresh failures use `INVALID_REFRESH_TOKEN` or `REFRESH_TOKEN_REUSED`; authentication lookup failures fail closed.
 
-```json
-{
-  "email": "user@example.com",
-  "password": "********"
-}
-```
-
-Illustrative response only; token transport/storage depends on OD-001. This example does not require exposing a refresh token to browser JavaScript:
-
-```json
-{
-  "accessToken": "...",
-  "refreshToken": "...",
-  "user": {
-    "id": "...",
-    "email": "user@example.com",
-    "displayName": "..."
-  }
-}
-```
-
-## POST `/api/v1/auth/refresh`
-
-Refresh strategy cần final decision (OD-001):
-- token trong body,
-- secure cookie,
-- platform-specific secure storage.
-
-## POST `/api/v1/auth/logout`
-
-Revokes current refresh/session.
+Register, Login and Refresh use configured process-local Nest throttling for the current single API instance. Boundary tests cover throttling, Origin/CSRF separation, cookie flags, token expiry/reuse and safe error envelopes. Email existence is deliberately disclosed only by duplicate Register; Login does not distinguish wrong password from nonexistent account.
 
 ---
 
@@ -712,7 +762,11 @@ Có thể chuyển cursor pagination khi cần, nhưng MVP dùng page/limit là 
 
 | Requirement | UX/Flow | API | Module | Data |
 |---|---|---|---|---|
-| FR-AUTH-002 | Login | POST `/auth/login` | AuthModule | users, refresh_tokens |
+| FR-AUTH-001/003/006 | Register -> authenticated shell | POST `/auth/register` | AuthModule | users, authentication session / refresh family |
+| FR-AUTH-002/003 | Login | POST `/auth/login` | AuthModule | users, authentication session / refresh family |
+| FR-AUTH-004 | Renew session | POST `/auth/refresh` | AuthModule | refresh hashes and family/session lifecycle |
+| FR-AUTH-005 | Current-session Logout | POST `/auth/logout` | AuthModule | current authentication session / refresh family |
+| NFR-SEC-001 / AUTH-CL-001 | Current identity | GET `/auth/me` | Auth/protected context | authenticated user and active session |
 | FR-LIB-001 | Library/Folder | `/folders` | FoldersModule | folders |
 | FR-LIB-002 | Folder/Deck | `/decks` | DecksModule | decks |
 | FR-CARD-001 | Card Editor | POST `/cards` | CardsModule | cards, vocabulary_cards |
@@ -748,7 +802,7 @@ Nếu sửa Requirement:
 4. Update artifact liên quan.
 5. Sau đó mới merge code change.
 
-Nếu AI đề xuất thay đổi:
+Nếu có đề xuất thay đổi:
 - phải ghi assumption,
 - không tự đổi source of truth,
 - human approve trước.
@@ -757,7 +811,7 @@ Nếu AI đề xuất thay đổi:
 
 # 18. Data/API Open Decisions
 
-Canonical status and approval gates: [PROJECT_PLAN.md](../PROJECT_PLAN.md). OD-001 covers refresh/session strategy; OD-002 deletion; OD-003 Card public API; OD-004 Mastery; OD-005 override; OD-006 snapshots; OD-007 exercise persistence; OD-008 flashcard mapping; OD-009 import; OD-010 search; OD-011 register response; OD-013 Grammar examples. These remain unresolved until the relevant approval/feature gate. OD-012 records the already-approved root/subtype storage baseline. A suggested field or example response is not evidence of approval.
+Canonical status and approval gates: [PROJECT_PLAN.md](../PROJECT_PLAN.md). OD-001 covers refresh/session strategy; OD-002 deletion; OD-003 Card public API; OD-004 Mastery; OD-005 override; OD-006 snapshots; OD-007 exercise persistence; OD-008 flashcard mapping; OD-009 import; OD-010 search; OD-011 register response; OD-013 Grammar examples. OD-001 and OD-011 were APPROVED on 2026-09-14; AUTH-CL-001 was RESOLVED, including EMAIL_ALREADY_EXISTS and GET /auth/me. Other deferred decisions remain gated before their relevant features. OD-012 records the already-approved root/subtype storage baseline. A suggested field or example response is not evidence of approval.
 
 # 19. M1 Foundation API
 

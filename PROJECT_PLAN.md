@@ -1,24 +1,16 @@
 # Project Plan — Foundation and Decision Gates
 
-Audit date: 2026-09-14. Repository: NihongoCore.
+Initial audit date: 2026-09-14. Last status synchronization: 2026-09-15. Repository: NihongoCore.
 
-No `PROJECT_PLAN.md` existed at audit preflight. This minimal tracker is created
-from the user's approved M1 foundation and Phase 0 audit instructions, the existing
-AGENTS rules and canonical documents. It does not claim to recover an earlier
-plan or approve a new product roadmap. AGENTS.md remains authoritative.
-
-Publication note: agent instructions, integrations, feature-workflow artifacts,
-constitution and internal audit evidence remain local at the owner's request.
-References to them describe the local governance; they are not required to build
-or run the published application foundation.
+This tracker records the approved foundation, delivery milestones and open product decisions. It does not approve a new product roadmap; the canonical product documents remain authoritative.
 
 ## Current status
 
-| Milestone                                           | State                            | Evidence / blocker                                                                                    |
-| --------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| M0 — Phase 0: Documentation Freeze & Open Decisions | WAITING_FOR_DECISION             | OD-001 and OD-011 need human approval before Authentication                                           |
-| M1 — Phase 1: Repository & Engineering Foundation   | DONE; VERIFIED                   | Actual commands, HTTP/browser checks and limitations in local Foundation Audit report (not published) |
-| `001-authentication`                                | NOT_READY_FOR_001_AUTHENTICATION | Session/refresh strategy and post-registration behavior remain unresolved; no feature work started    |
+| Milestone                                           | State          | Evidence / blocker                                                                                    |
+| --------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------- |
+| M0 — Phase 0: Documentation Freeze & Open Decisions | DONE           | OD-001/OD-011 approved and AUTH-CL-001 resolved 2026-09-14; canonical documentation synchronized      |
+| M1 — Phase 1: Repository & Engineering Foundation   | DONE; VERIFIED | Actual commands, HTTP/browser checks and limitations in local Foundation Audit report (not published) |
+| `001-authentication`                                | DONE; VERIFIED | Approved design A implemented; 50/50 tasks complete; API/client/E2E/build/database/visual checks pass |
 
 ## Phase 0 — Documentation Freeze & Open Decisions
 
@@ -27,15 +19,12 @@ Closure requires all of the following:
 - [x] Compare approved docs, overview and constitution; synchronize unambiguous stale statements.
 - [x] Preserve approved stack, MVP scope, ownership and Review history invariants.
 - [x] Track future decisions with their required feature gate instead of deciding the whole product now.
-- [x] Confirm constitution compatibility with AGENTS and approved docs.
-- [ ] Human approves OD-001 and OD-011.
-- [ ] Architecture, data/API and UX/product docs record those approved choices.
-- [ ] Confirm no remaining ambiguity would force the upcoming feature to guess.
+- [x] Confirm engineering principles are compatible with approved product and architecture documents.
+- [x] Human approves OD-001 and OD-011 (explicit approval 2026-09-14).
+- [x] Architecture, data/API and UX/product docs record those approved choices and AUTH-CL-001.
+- [x] Confirm no blocking requirements ambiguity remains; bounded technical details belong to planning after design.
 
-Major UI still requires the Spec -> Clarify -> CKW direction -> SuperDesign
-exploration -> CKW critique -> human selection -> refinement/handoff -> Plan /
-Checklist / Tasks / Analyze -> Implementation / Tests -> Visual Review ->
-Converge workflow in AGENTS §9–10. M0 closure does not waive feature readiness,
+Major UI work still requires approved requirements, clarification, design selection, implementation planning, tests and visual review. M0 closure does not waive feature readiness,
 design approval, acceptance criteria or explicit implementation authorization.
 
 ## Phase 1 — Repository & Engineering Foundation
@@ -52,148 +41,68 @@ M1 scope is the minimal existing foundation, not product functionality:
 - [x] Minimal verification-only GitHub Actions and practical README inspected.
 - [x] No domain tables or product features added as foundation.
 
-`db:status` currently exits 1 because no migration exists; this is the documented
-empty-schema M1 state. It is not proof of a broken connection. The real database
-returns `SELECT 1` successfully and has zero public tables. The first domain
-migration belongs to an approved feature. No dummy model or baseline migration
-is needed for this audit.
+The initial M1 audit correctly recorded an empty schema with no migration. Feature
+`001-authentication` later added the first additive Prisma migration for `User`,
+`AuthSession` and `RefreshToken`. Final `prisma migrate status` reports one
+migration and an up-to-date PostgreSQL schema.
 
-Native device/emulator rendering and a hosted GitHub Actions run were not
-performed; Web render/build, native-compatible source/dependency checks and local
-CI-equivalent quality commands establish the M1 evidence boundary. This is not a
-claim that the product or every platform is release-ready.
+The final feature verification exports valid Web, Android and iOS bundles. Web
+was exercised against the live API at 390, 1024 and 1440 widths and passed
+independent visual review. Physical Android/iOS device interaction, platform screen-reader
+runs and a hosted GitHub Actions execution were not available in this local
+Windows environment; these limits are recorded without weakening the tested
+security and behavior contracts.
 
 ## Open Decision Tracker
 
 A = ALREADY_DECIDED; B = SAFE_TECHNICAL_DECISION; C = HUMAN_APPROVAL_REQUIRED;
-D = DEFERRED. An APPROVED entry below records an existing authoritative baseline,
-not new approval granted by this audit. D means unresolved and gated before the
-named feature; it does not authorize an agent to choose later without review.
+D = DEFERRED. A entries record the previously approved baseline; C / APPROVED entries record explicit subsequent human approval, not an inferred implementation choice. D means unresolved and gated before the named feature; it requires review before implementation.
 
-| ID     | Decision                         | Class / status                        | Confirmed baseline and unresolved part                                                                                                                                                       | Required before                                                             |
-| ------ | -------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| OD-001 | Session / refresh strategy       | C / OPEN                              | Access + refresh and authenticated ownership are approved. Per-session granularity, storage, rotation, expiry and revocation details are not. Architecture §11; data/API §4/8; AGENTS §47.1. | `001-authentication`                                                        |
-| OD-002 | Folder / Deck / Card deletion    | D / DEFERRED; human approval required | Preserve Review history is mandatory; hard/soft delete, child-resource behavior and retention are unresolved. Nullable `deleted_at` is not complete deletion policy.                         | Library implementation; coordinate with Vocabulary Card and OD-006          |
-| OD-003 | Card public API strategy         | D / DEFERRED; human approval required | Unified API example is a recommendation, not approval. Choose unified discriminated DTO versus subtype endpoints. Data/API §10 explicitly leaves it open.                                    | Vocabulary Card implementation                                              |
-| OD-004 | Basic Mastery formula            | D / DEFERRED; human approval required | User + Card + Skill and first-try distinction approved; weights, thresholds and decay not approved. No SRS scheduling.                                                                       | Core Study Loop / Review + Basic Mastery                                    |
-| OD-005 | User Override behavior           | D / DEFERRED; human approval required | System correctness and override remain distinguishable. Whether/how override adds Accepted Answers and adjusts aggregates is unresolved.                                                     | Answer Evaluation / Review                                                  |
-| OD-006 | Review snapshot depth            | D / DEFERRED; human approval required | Card edits cannot rewrite history. Exact content/version snapshots and deletion retention need approval.                                                                                     | Vocabulary Card schema choices that constrain history; then Core Study Loop |
-| OD-007 | Study/exercise persistence       | D / DEFERRED; human approval required | Backend authority and protected answer timing approved; ordered exercise persistence, resume, replay/idempotency and attempt state unresolved.                                               | Core Study Session                                                          |
-| OD-008 | Flashcard rating -> Mastery      | D / DEFERRED; human approval required | Four-level rating is shown in UX but explicitly awaits mapping to Review/Mastery; do not infer SM-2/FSRS.                                                                                    | Flashcard implementation and its Review/Mastery integration                 |
-| OD-009 | CSV limits / duplicate actions   | D / DEFERRED; human approval required | CSV, preview, mapping, validation and user confirmation approved. File/row limits, normalization and supported Skip/Create/Update/Merge subset unresolved.                                   | CSV Import                                                                  |
-| OD-010 | Search API / normalization       | D / DEFERRED; human approval required | PostgreSQL search and bounded retrieval approved; endpoint style, searchable fields and Vietnamese/Japanese normalization remain open.                                                       | Search; earlier if Library includes search                                  |
-| OD-011 | Successful registration behavior | C / OPEN                              | Data/API §8 explicitly leaves immediate session versus separate Login unanswered.                                                                                                            | `001-authentication`                                                        |
-| OD-012 | Card storage baseline            | A / APPROVED                          | Root `cards` plus Vocabulary/Sentence/Grammar detail tables; AGENTS §17 and data/API §2–5. Physical details/migrations remain feature work. Public API is still OD-003.                      | Baseline recorded; revisit only through approved change                     |
-| OD-013 | Grammar examples storage         | D / DEFERRED; human approval required | Basic Grammar is in MVP; separate example table versus simple fields is not decided. PRD §11.7; data/API §2.2/18.                                                                            | Basic Grammar schema/spec; earlier if shared Card contract depends on it    |
-| OD-014 | MVP exclusions and SRS phase     | A / APPROVED                          | KANJI, Audio, Full SRS/Due Today and Offline remain outside MVP. Basic Mastery stays in MVP; Full SRS currently V1.2. AGENTS §7.2/20.1, FR-MAS-004, RULE-013, docs README §4.                | Baseline recorded; no new infrastructure now                                |
+| ID     | Decision                         | Class / status                        | Confirmed baseline and unresolved part                                                                                                                                                                                                              | Required before                                                             |
+| ------ | -------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| OD-001 | Session / refresh strategy       | C / APPROVED 2026-09-14               | Independent sessions; centrally configurable 15m access, 7d inactivity, 30d absolute lifetime; hash-only rotation, current-session Logout, reuse family revocation; Web protected cookies/native SecureStore. See architecture §11 and data/API §8. | Resolved; preserve approved behavior in 001-authentication                  |
+| OD-002 | Folder / Deck / Card deletion    | D / DEFERRED; human approval required | Preserve Review history is mandatory; hard/soft delete, child-resource behavior and retention are unresolved. Nullable `deleted_at` is not complete deletion policy.                                                                                | Library implementation; coordinate with Vocabulary Card and OD-006          |
+| OD-003 | Card public API strategy         | D / DEFERRED; human approval required | Unified API example is a recommendation, not approval. Choose unified discriminated DTO versus subtype endpoints. Data/API §10 explicitly leaves it open.                                                                                           | Vocabulary Card implementation                                              |
+| OD-004 | Basic Mastery formula            | D / DEFERRED; human approval required | User + Card + Skill and first-try distinction approved; weights, thresholds and decay not approved. No SRS scheduling.                                                                                                                              | Core Study Loop / Review + Basic Mastery                                    |
+| OD-005 | User Override behavior           | D / DEFERRED; human approval required | System correctness and override remain distinguishable. Whether/how override adds Accepted Answers and adjusts aggregates is unresolved.                                                                                                            | Answer Evaluation / Review                                                  |
+| OD-006 | Review snapshot depth            | D / DEFERRED; human approval required | Card edits cannot rewrite history. Exact content/version snapshots and deletion retention need approval.                                                                                                                                            | Vocabulary Card schema choices that constrain history; then Core Study Loop |
+| OD-007 | Study/exercise persistence       | D / DEFERRED; human approval required | Backend authority and protected answer timing approved; ordered exercise persistence, resume, replay/idempotency and attempt state unresolved.                                                                                                      | Core Study Session                                                          |
+| OD-008 | Flashcard rating -> Mastery      | D / DEFERRED; human approval required | Four-level rating is shown in UX but explicitly awaits mapping to Review/Mastery; do not infer SM-2/FSRS.                                                                                                                                           | Flashcard implementation and its Review/Mastery integration                 |
+| OD-009 | CSV limits / duplicate actions   | D / DEFERRED; human approval required | CSV, preview, mapping, validation and user confirmation approved. File/row limits, normalization and supported Skip/Create/Update/Merge subset unresolved.                                                                                          | CSV Import                                                                  |
+| OD-010 | Search API / normalization       | D / DEFERRED; human approval required | PostgreSQL search and bounded retrieval approved; endpoint style, searchable fields and Vietnamese/Japanese normalization remain open.                                                                                                              | Search; earlier if Library includes search                                  |
+| OD-011 | Successful registration behavior | C / APPROVED 2026-09-14               | Register creates user and authenticated session then enters the authenticated shell without manual Login; Dashboard/Library excluded. PRD §6.1, data/API §8, UX §16.                                                                                | Resolved for 001-authentication                                             |
+| OD-012 | Card storage baseline            | A / APPROVED                          | Root `cards` plus Vocabulary/Sentence/Grammar detail tables; the approved data contract §2–5. Physical details/migrations remain feature work. Public API is still OD-003.                                                                             | Baseline recorded; revisit only through approved change                     |
+| OD-013 | Grammar examples storage         | D / DEFERRED; human approval required | Basic Grammar is in MVP; separate example table versus simple fields is not decided. PRD §11.7; data/API §2.2/18.                                                                                                                                   | Basic Grammar schema/spec; earlier if shared Card contract depends on it    |
+| OD-014 | MVP exclusions and SRS phase     | A / APPROVED                          | KANJI, Audio, Full SRS/Due Today and Offline remain outside MVP. Basic Mastery stays in MVP; Full SRS currently V1.2. FR-MAS-004, RULE-013 and docs README §4.                                                                       | Baseline recorded; no new infrastructure now                                |
 
-No unresolved product/security decision was classified B merely to close M0.
-The reversible Expo configuration cleanup is a foundation tooling fix, not a
-product decision. No approval for token strategy exists in the recorded setup or
-constitution requests; those requests authorized tooling and stable principles.
+## Authentication approval record — 2026-09-14
 
-## Human Decision Packet
+The user explicitly approved OD-001 and OD-011 and resolved AUTH-CL-001 with amendments. The former recommendation packet is superseded; no further approval is needed for these decisions.
 
-All currently blocking decisions are presented together below. Recommendations
-are **PROPOSED, NOT APPROVED** and have not been applied to runtime code, schemas
-or canonical authentication contracts.
+- OD-001 canonical security/session policy: [System Architecture §11](docs/SYSTEM_ARCHITECTURE.md). Access/refresh/session lifetimes are configurable with defaults of 15 minutes / 7 days inactivity / 30 days absolute.
+- OD-011 canonical Register success: [Product Requirements §6.1](docs/PRODUCT_REQUIREMENTS.md), [Data/API §8](docs/DATA_API_AND_TRACEABILITY.md), [UX §16](docs/UX_AND_PRODUCT_DESIGN.md).
+- AUTH-CL-001 = RESOLVED: password 15-128 Unicode code points, spaces/Unicode allowed, no composition rules or silent trimming/truncation; normalized trimmed/lowercase email without provider transforms; optional trimmed display name up to 80 characters; duplicate Register 409 / EMAIL_ALREADY_EXISTS; equivalent invalid Login behavior; protected GET /api/v1/auth/me.
+- The user delegated the reasonable email length to API/database design; use a 254-character maximum after trimming, consistent across client/server and future persistence. Details are recorded in data/API §4/8.
+- Feature 001 has approved requirements, resolved decisions, design A, an implementation plan and 50 completed tasks.
+- M0 itself did not implement Authentication. Feature 001 subsequently passed design, plan, tasks, analysis, implementation, verification and convergence gates. Future ODs stay deferred as listed above.
 
-### OD-001 — Session and refresh strategy
+## 001-authentication completion — 2026-09-15
 
-**Question:** Should each login have an independently revocable session, or should
-each account have only one active session? Approve the accompanying security and
-storage behavior as one coherent contract, or state specific changes.
+- [x] OD-001, OD-011 and AUTH-CL-001 preserved exactly as approved.
+- [x] Candidate A (Reading desk) selected by the user, refined and handed off; the final visual review found no blocker.
+- [x] Production Login/Register UI, `/account` shell, bootstrap, refresh and current-session Logout implemented.
+- [x] NestJS Register/Login/Refresh/Logout/me endpoints, protected context and stable safe errors implemented.
+- [x] PostgreSQL/Prisma User, AuthSession and hash-only RefreshToken persistence added in one migration.
+- [x] Web uses an HttpOnly/SameSite=Lax refresh cookie with Origin/CSRF controls; native uses Expo SecureStore; access tokens remain in memory.
+- [x] API 24/24 and client 6/6 tests pass; Web–API E2E passes with 12 checked auth responses.
+- [x] Lint, typecheck, Web/API build, Android/iOS exports, Prisma checks, live health and Swagger checks pass.
+- [x] Requirements-to-implementation consistency review reports no remaining actionable finding; tasks are 50/50 complete.
 
-**Why it matters:** This determines concurrent Web/mobile use, database records,
-token transport, replay handling, logout and how quickly stolen access is revoked.
-AGENTS §19/32/47.1 and architecture §11 require human approval.
-
-**Option A — Independent sessions (recommended).** Each login creates its own
-session/refresh family. Logging out or detecting refresh reuse revokes that
-session/family, leaving other sessions intact. Advantages: fits use across Web
-and mobile, limits revocation impact, clear ownership. Disadvantages: more
-session records and transactional rotation logic; concurrent refresh must be
-coordinated to avoid treating legitimate races as reuse.
-
-**Option B — One active session per account.** A new login revokes the previous
-session. Keep the same secure storage and rotation rules below. Advantages:
-simpler session cardinality and account-wide revocation. Disadvantages: switching
-between Web and mobile logs the earlier client out, and compromise/revocation
-interrupts the entire account. This user-visible restriction is not currently
-approved.
-
-**Concrete recommended contract for A, awaiting approval:**
-
-- JWT access token: proposed 15-minute expiry, held in client memory; include a
-  server-issued session reference. Every protected request checks that session's
-  active status in PostgreSQL, so revocation blocks remaining access immediately.
-- Refresh token: cryptographically random opaque value; persist only its hash
-  plus session/family metadata in PostgreSQL. Rotate once per successful refresh
-  in a transaction. Proposed inactivity expiry: 7 days; absolute session expiry:
-  30 days. Rotation does not extend the absolute deadline. These durations are
-  recommendations, not facts already approved by the project.
-- Web: refresh token in a host-only `HttpOnly`, `Secure`, `SameSite=Lax` cookie
-  for the API; do not return it in Web JSON or put it in local/session storage.
-  Use HTTPS and same-site client/API hosting in production, explicit credentialed
-  CORS origins, Origin validation and CSRF protection for cookie-bearing auth
-  operations. Local HTTP exceptions must stay development-only. Final domain
-  names are not being chosen here.
-- Native: refresh token in Expo SecureStore; access token in memory. SecureStore
-  would be added only during the approved authentication feature. Handle absent
-  or unreadable storage by returning to Login; the backend still decides validity.
-- Logout: revoke the current session/family and clear local tokens/cookie. Do not
-  add a session-management screen or Logout All feature merely for this strategy.
-- Expired/invalid/revoked refresh: reject with a generic authentication error and
-  require Login. Reuse of an already consumed refresh token revokes its family;
-  do not return a replacement token. Coordinate refresh calls per session and
-  document lost-response/concurrent-tab handling in the feature plan.
-- Never accept client `userId` as ownership, store raw refresh tokens on the
-  server, or log credentials. Explicitly distinguish Web/native token transport
-  in the final API contract. The existing JSON example is not that final contract.
-
-Rotation/replay protection is informed by [RFC 9700 §4.14](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.14);
-this recommendation does not introduce an OAuth provider or claim this custom
-login API implements the full OAuth protocol. Cookie/session handling follows
-[OWASP session guidance](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html).
-Native storage capability is documented by [Expo SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/).
-The specific lifetimes, per-session policy and immediate revocation choice above
-are project recommendations requiring approval, not requirements asserted by those sources.
-
-**Impacted files after approval:** architecture §11 and an auth ADR; data/API
-§4/8; PRD auth acceptance behavior where affected; UX expired-session/logout
-behavior; this tracker; future `specs/001-authentication/` artifacts.
-
-**Blocking:** `001-authentication` specification freeze and implementation.
-
-### OD-011 — What happens after successful registration?
-
-**Question:** Does Register create an authenticated session immediately, or does
-it create the account and then require Login?
-
-**Why it matters:** The register response, frontend navigation, token creation and
-acceptance tests depend on the answer. Data/API §8 explicitly leaves it open.
-
-**Option A — Create account and session (recommended).** Return the authenticated
-result using the approved OD-001 platform transport, then enter the authenticated
-area defined by the feature spec. Advantage: no repeated credentials step.
-Disadvantage: registration must handle session creation consistently and recover
-cleanly if the response is lost.
-
-**Option B — Create account, then Login.** Return account-creation success without
-tokens and navigate to Login. Advantage: separates registration and session
-creation. Disadvantage: an extra user step and distinct navigation/acceptance flow.
-
-**Recommendation:** A, reusing OD-001. Neither option adds email verification,
-password reset, a Dashboard implementation or another unapproved feature.
-
-**Impacted files after approval:** PRD registration acceptance criteria; data/API
-register response; UX registration flow; this tracker; future authentication spec.
-
-**Blocking:** `001-authentication` specification freeze and implementation.
+No password recovery, verification, OAuth, MFA, role/admin, Dashboard, Library,
+full SRS, Offline or Audio capability was added.
 
 ## Next action
 
-Human reviews OD-001 and OD-011 together. After approval, synchronize their
-canonical contracts, reassess M0, then explicitly authorize the separate
-`001-authentication` workflow. Future OD gates stay deferred until their named
-features. No Authentication implementation is authorized by this audit.
+The next intended product feature is `002-library-hierarchy`. Its implementation
+has not started. Begin it only through its requirement, clarification and design
+gates; do not infer its deferred deletion/history decisions from Authentication.

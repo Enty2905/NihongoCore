@@ -7,22 +7,23 @@
   ],
   "packageManager": "npm@11.5.2",
   "engines": {
-    "node": "\u003e=24.3.0 \u003c25",
-    "npm": "\u003e=11 \u003c12"
+    "node": ">=24.3.0 <25",
+    "npm": ">=11 <12"
   },
   "scripts": {
     "dev:api": "npm run start:dev --workspace @nihongocore/api",
     "dev:web": "npm run web --workspace @nihongocore/client",
     "dev:mobile": "npm run start --workspace @nihongocore/client",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --write package.json compose.yaml eslint.config.mjs .github/workflows apps README.md",
+    "format:check": "prettier --check package.json compose.yaml eslint.config.mjs .github/workflows apps README.md",
     "lint": "eslint apps",
     "typecheck": "npm run typecheck --workspaces",
-    "test": "npm run test --workspace @nihongocore/api",
+    "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces",
     "db:generate": "npm run db:generate --workspace @nihongocore/api",
     "db:validate": "npm run db:validate --workspace @nihongocore/api",
     "db:migrate": "npm run db:migrate --workspace @nihongocore/api --",
+    "db:migrate:deploy": "npm run db:migrate:deploy --workspace @nihongocore/api",
     "db:status": "npm run db:status --workspace @nihongocore/api",
     "db:check": "npm run db:check --workspace @nihongocore/api"
   },

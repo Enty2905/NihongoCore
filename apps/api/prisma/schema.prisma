@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client"
-  output = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
   moduleFormat = "cjs"
 }
 
@@ -8,4 +8,45 @@ datasource db {
   provider = "postgresql"
 }
 
-// Domain models and the first migration belong to 001-authentication.
+model User {
+  id           String        @id @default(uuid()) @db.Uuid
+  email        String        @unique @db.VarChar(254)
+  displayName  String?       @db.VarChar(80)
+  passwordHash String
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+  sessions     AuthSession[]
+}
+
+model AuthSession {
+  id                String         @id @default(uuid()) @db.Uuid
+  userId            String         @db.Uuid
+  createdAt         DateTime       @default(now()) @db.Timestamptz(3)
+  lastUsedAt        DateTime       @db.Timestamptz(3)
+  expiresAt         DateTime       @db.Timestamptz(3)
+  absoluteExpiresAt DateTime       @db.Timestamptz(3)
+  revokedAt         DateTime?      @db.Timestamptz(3)
+  revocationReason  String?        @db.VarChar(32)
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens     RefreshToken[]
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@index([absoluteExpiresAt])
+}
+
+model RefreshToken {
+  id           String        @id @default(uuid()) @db.Uuid
+  sessionId    String        @db.Uuid
+  tokenHash    String        @unique @db.Char(64)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  expiresAt    DateTime      @db.Timestamptz(3)
+  consumedAt   DateTime?     @db.Timestamptz(3)
+  revokedAt    DateTime?     @db.Timestamptz(3)
+  replacedById String?       @unique @db.Uuid
+  session      AuthSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  replacedBy   RefreshToken? @relation("RefreshRotation", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces     RefreshToken? @relation("RefreshRotation")
+
+  @@index([sessionId, consumedAt, revokedAt])
+}
